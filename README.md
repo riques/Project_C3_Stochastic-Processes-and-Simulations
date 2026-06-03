@@ -1,6 +1,4 @@
-Alunos:
-Henrique De Nadai Salvador
-Kauan Araujo Moreira
+Alunos: **Henrique De Nadai Salvador** e **Kauan Araujo Moreira**
 # Projeto C3 - Roleta de Markov
 Projeto da disciplina de Processos Estocásticos e Simulações (C3).
 
