@@ -1,0 +1,2555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roleta de Markov | Simulador Estocástico</title>
+  <style>
+    :root {
+      --bg: #0b1017;
+      --panel: rgba(16, 24, 35, 0.91);
+      --panel-strong: rgba(20, 31, 45, 0.96);
+      --panel-soft: rgba(255, 255, 255, 0.045);
+      --line: rgba(190, 210, 230, 0.14);
+      --line-strong: rgba(190, 210, 230, 0.24);
+      --text: #eef5fb;
+      --muted: #9fb0c2;
+      --soft: #c8d5e1;
+      --accent: #7dd3fc;
+      --green: #26d07c;
+      --yellow: #f3c84b;
+      --red: #f15b5b;
+      --magenta: #d96cff;
+      --orange: #ff9d42;
+      --shadow: 0 18px 55px rgba(0, 0, 0, 0.38);
+      --radius: 8px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background: var(--bg);
+      font-family: var(--sans);
+      overflow-x: hidden;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    #networkCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -2;
+      opacity: 0.55;
+    }
+
+    .page {
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(11, 16, 23, 0.78), rgba(11, 16, 23, 0.98)),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 120px);
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(17, 27, 39, 0.97), rgba(8, 13, 20, 0.96)),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 54px);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar-inner {
+      width: min(1680px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 42px 0 34px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+      align-items: end;
+      gap: 32px;
+    }
+
+    .brand {
+      min-width: 0;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 0.86rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 850px;
+      margin-bottom: 12px;
+      font-size: clamp(2.65rem, 6vw, 5.6rem);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 980px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: clamp(1.02rem, 1.55vw, 1.28rem);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tag {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 0 14px;
+      color: var(--soft);
+      background: rgba(255, 255, 255, 0.06);
+      font-size: 0.86rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .overview-panel {
+      grid-column: 1 / -1;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(125, 211, 252, 0.1), transparent 44%),
+        var(--panel);
+    }
+
+    .guide-panel {
+      grid-column: 1 / -1;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(38, 208, 124, 0.08), transparent 36%),
+        linear-gradient(315deg, rgba(217, 108, 255, 0.08), transparent 44%),
+        var(--panel-strong);
+    }
+
+    .guide-shell {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      gap: 24px;
+      padding: 30px;
+    }
+
+    .guide-sidebar {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.18);
+      padding: 18px;
+    }
+
+    .guide-sidebar h2 {
+      margin: 0 0 10px;
+      font-size: clamp(1.45rem, 2.4vw, 2rem);
+      line-height: 1.1;
+    }
+
+    .guide-sidebar p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.65;
+    }
+
+    .guide-progress {
+      display: grid;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .guide-dot {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--muted);
+      padding: 0 10px;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      font-size: 0.86rem;
+      font-weight: 800;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .guide-dot span {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(125, 211, 252, 0.12);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+    }
+
+    .guide-dot.active {
+      border-color: rgba(125, 211, 252, 0.68);
+      color: var(--text);
+      background: rgba(125, 211, 252, 0.1);
+    }
+
+    .guide-dot.done {
+      color: var(--soft);
+      border-color: rgba(38, 208, 124, 0.32);
+    }
+
+    .guide-stage {
+      min-height: 520px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.04);
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      overflow: hidden;
+    }
+
+    .guide-hero {
+      padding: 26px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.16);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .guide-index {
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .guide-title {
+      margin: 8px 0 0;
+      font-size: clamp(1.75rem, 3vw, 3rem);
+      line-height: 1.08;
+    }
+
+    .guide-chip {
+      min-height: 40px;
+      border: 1px solid rgba(125, 211, 252, 0.34);
+      border-radius: var(--radius);
+      background: rgba(125, 211, 252, 0.09);
+      color: var(--soft);
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .guide-body {
+      padding: 26px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .guide-text {
+      color: var(--soft);
+      font-size: 1.08rem;
+      line-height: 1.76;
+    }
+
+    .guide-text p {
+      margin: 0 0 14px;
+    }
+
+    .guide-text p:last-child {
+      margin-bottom: 0;
+    }
+
+    .guide-formula {
+      border: 1px solid rgba(125, 211, 252, 0.26);
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.26);
+      padding: 18px;
+      color: #d8f3ff;
+      font-family: var(--mono);
+      font-size: 1rem;
+      line-height: 1.82;
+      overflow-x: auto;
+    }
+
+    .guide-example {
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--muted);
+      line-height: 1.58;
+      font-size: 0.98rem;
+    }
+
+    .guide-actions {
+      padding: 18px 26px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.14);
+    }
+
+    .guide-status {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.92rem;
+    }
+
+    .guide-empty {
+      display: grid;
+      place-items: center;
+      min-height: 100%;
+      padding: 34px;
+      text-align: center;
+    }
+
+    .guide-empty div {
+      max-width: 620px;
+    }
+
+    .guide-empty h3 {
+      margin: 0 0 12px;
+      font-size: clamp(1.6rem, 3vw, 2.7rem);
+      line-height: 1.08;
+    }
+
+    .guide-empty p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+      line-height: 1.72;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
+      gap: 26px;
+      padding: 30px;
+      align-items: stretch;
+    }
+
+    .overview-copy h2 {
+      margin: 0 0 12px;
+      font-size: clamp(1.7rem, 3vw, 2.55rem);
+      line-height: 1.08;
+    }
+
+    .overview-copy p {
+      max-width: 880px;
+      margin: 0;
+      color: var(--soft);
+      font-size: 1.04rem;
+      line-height: 1.72;
+    }
+
+    .big-equation {
+      margin-top: 22px;
+      padding: 18px 20px;
+      border: 1px solid rgba(125, 211, 252, 0.28);
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.28);
+      color: #d8f3ff;
+      font-family: var(--mono);
+      font-size: clamp(0.92rem, 1.6vw, 1.15rem);
+      line-height: 1.85;
+      overflow-x: auto;
+    }
+
+    .concept-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .concept-card {
+      min-height: 142px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .concept-card strong {
+      display: block;
+      margin-bottom: 9px;
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    .concept-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.58;
+    }
+
+    .app {
+      width: min(1680px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 30px 0 52px;
+      display: grid;
+      grid-template-columns: minmax(460px, 580px) minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      padding: 26px 26px 0;
+    }
+
+    .panel-header.compact {
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: clamp(1.18rem, 1.5vw, 1.45rem);
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .panel-kicker {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.68;
+      font-size: 1rem;
+    }
+
+    .control-panel {
+      position: sticky;
+      top: 24px;
+      overflow: hidden;
+    }
+
+    .wheel-zone {
+      padding: 22px 26px 24px;
+    }
+
+    .state-strip {
+      min-height: 58px;
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel-soft);
+    }
+
+    .state-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--state-color, var(--green));
+      box-shadow: 0 0 18px var(--state-color, var(--green));
+    }
+
+    .state-main {
+      min-width: 0;
+      font-weight: 850;
+      font-size: 1.14rem;
+    }
+
+    .state-main span {
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .state-step {
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.96rem;
+      white-space: nowrap;
+    }
+
+    .wheel-stage {
+      position: relative;
+      width: min(100%, 520px);
+      aspect-ratio: 1;
+      margin: 26px auto 18px;
+      display: grid;
+      place-items: center;
+    }
+
+    .wheel-shadow {
+      position: absolute;
+      inset: 5%;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.42);
+      filter: blur(18px);
+      transform: translateY(22px);
+    }
+
+    .pointer {
+      position: absolute;
+      top: -4px;
+      left: 50%;
+      width: 36px;
+      height: 58px;
+      transform: translateX(-50%);
+      z-index: 5;
+      filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.48));
+    }
+
+    .pointer::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      clip-path: polygon(50% 100%, 0 0, 100% 0);
+      background: #f7fafc;
+    }
+
+    .wheel-ring {
+      position: relative;
+      width: 93%;
+      height: 93%;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        conic-gradient(from 0deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.22)),
+        #09111a;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow:
+        inset 0 0 0 8px rgba(255, 255, 255, 0.05),
+        0 28px 65px rgba(0, 0, 0, 0.46);
+    }
+
+    .wheel {
+      width: 88%;
+      height: 88%;
+      border-radius: 50%;
+      background: conic-gradient(var(--green) 0deg 225deg, var(--yellow) 225deg 290deg, var(--red) 290deg 312deg, var(--magenta) 312deg 348deg, var(--orange) 348deg 360deg);
+      border: 1px solid rgba(0, 0, 0, 0.62);
+      box-shadow:
+        inset 0 0 0 2px rgba(255, 255, 255, 0.12),
+        inset 0 0 36px rgba(0, 0, 0, 0.58);
+      transform: rotate(0deg);
+      will-change: transform;
+    }
+
+    .wheel::after {
+      content: "";
+      position: absolute;
+      inset: 9%;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+    }
+
+    .hub {
+      position: absolute;
+      width: 104px;
+      height: 104px;
+      border-radius: 50%;
+      z-index: 4;
+      display: grid;
+      place-items: center;
+      background: #101923;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow:
+        0 0 0 8px rgba(0, 0, 0, 0.28),
+        inset 0 0 20px rgba(255, 255, 255, 0.08);
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      font-weight: 900;
+      color: var(--accent);
+    }
+
+    .roulette-caption {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.62;
+      text-align: center;
+    }
+
+    .u-gauge {
+      position: relative;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #0a1119;
+      overflow: hidden;
+    }
+
+    .u-segment {
+      height: 100%;
+      display: inline-block;
+      vertical-align: top;
+      opacity: 0.88;
+    }
+
+    .u-marker {
+      position: absolute;
+      top: -1px;
+      bottom: -1px;
+      width: 2px;
+      background: #ffffff;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
+      transform: translateX(-1px);
+      display: none;
+    }
+
+    .u-marker::after {
+      content: attr(data-u);
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      min-width: 52px;
+      color: #ffffff;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      min-height: 54px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 850;
+      font-size: 1rem;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, opacity 160ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(125, 211, 252, 0.58);
+      background: rgba(125, 211, 252, 0.1);
+    }
+
+    .btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      border-color: rgba(125, 211, 252, 0.54);
+      background: #1d5b77;
+      box-shadow: 0 12px 28px rgba(29, 91, 119, 0.3);
+    }
+
+    .btn-danger {
+      border-color: rgba(241, 91, 91, 0.35);
+      background: rgba(241, 91, 91, 0.12);
+    }
+
+    .bet-box {
+      padding: 0 26px 26px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 150px;
+      gap: 14px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .field input {
+      width: 100%;
+      height: 54px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--text);
+      padding: 0 14px;
+      outline: none;
+      font-size: 1.04rem;
+    }
+
+    .field input:focus {
+      border-color: rgba(125, 211, 252, 0.68);
+    }
+
+    .bet-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .bet-chip {
+      min-height: 72px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.045);
+      cursor: pointer;
+      padding: 10px 7px;
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 4px;
+      font-size: clamp(0.78rem, 1.2vw, 0.9rem);
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .bet-chip span {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--chip-color);
+      box-shadow: 0 0 12px var(--chip-color);
+    }
+
+    .bet-chip.active {
+      border-color: var(--chip-color);
+      background: color-mix(in srgb, var(--chip-color) 16%, transparent);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .metric {
+      min-height: 98px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .metric small {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 10px;
+      font-size: clamp(1.22rem, 2.2vw, 1.65rem);
+      line-height: 1.08;
+      word-break: break-word;
+    }
+
+    .metric .positive {
+      color: var(--green);
+    }
+
+    .metric .negative {
+      color: var(--red);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(430px, 0.94fr);
+      gap: 28px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 28px;
+    }
+
+    .content {
+      padding: 26px;
+    }
+
+    .formula {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0 0;
+      padding: 20px;
+      border-left: 4px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: rgba(0, 0, 0, 0.22);
+      font-family: var(--mono);
+      color: #d8f3ff;
+      overflow-x: auto;
+      line-height: 1.8;
+      font-size: 1rem;
+    }
+
+    .plain-explainer {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .plain-explainer div {
+      min-height: 126px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .plain-explainer strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .plain-explainer p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.58;
+      font-size: 0.94rem;
+    }
+
+    .step-list {
+      list-style: none;
+      margin: 18px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .step-item {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .step-number {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius);
+      background: rgba(125, 211, 252, 0.11);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-weight: 900;
+    }
+
+    .step-item.active {
+      border-color: rgba(125, 211, 252, 0.5);
+      background: rgba(125, 211, 252, 0.08);
+    }
+
+    .step-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 1.02rem;
+    }
+
+    .step-item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.58;
+      font-size: 0.96rem;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 112px repeat(5, minmax(76px, 1fr));
+      gap: 6px;
+      margin-top: 18px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .matrix-cell,
+    .matrix-label {
+      min-height: 58px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      font-family: var(--mono);
+      font-size: 0.96rem;
+      white-space: nowrap;
+    }
+
+    .matrix-label {
+      color: var(--soft);
+      background: rgba(255, 255, 255, 0.04);
+      font-family: var(--sans);
+      font-weight: 850;
+    }
+
+    .matrix-cell {
+      background: rgba(125, 211, 252, var(--heat, 0.08));
+      color: var(--text);
+    }
+
+    .matrix-cell.active-row {
+      border-color: rgba(125, 211, 252, 0.62);
+    }
+
+    .matrix-cell.selected-column {
+      box-shadow: inset 0 -3px 0 var(--selected-color);
+    }
+
+    .prob-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .prob-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr) 86px 114px;
+      gap: 14px;
+      align-items: center;
+      font-size: 0.98rem;
+    }
+
+    .prob-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-weight: 850;
+    }
+
+    .mini-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--dot);
+      box-shadow: 0 0 12px var(--dot);
+      flex: 0 0 auto;
+    }
+
+    .bar-track {
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: var(--w);
+      background: var(--fill);
+    }
+
+    .prob-value,
+    .prob-interval {
+      color: var(--soft);
+      font-family: var(--mono);
+      text-align: right;
+    }
+
+    .chart {
+      width: 100%;
+      height: 340px;
+      display: block;
+    }
+
+    .chart.short {
+      height: 300px;
+    }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 750;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-line {
+      width: 24px;
+      height: 4px;
+      border-radius: 3px;
+      background: var(--legend);
+    }
+
+    .assistant {
+      min-height: 260px;
+      border-top: 1px solid var(--line);
+      padding: 26px;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .assistant-output {
+      min-height: 150px;
+      margin-top: 16px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--soft);
+      line-height: 1.68;
+      font-size: 1rem;
+    }
+
+    .assistant-output p {
+      margin: 0 0 9px;
+    }
+
+    .assistant-output p:last-child {
+      margin-bottom: 0;
+    }
+
+    .assistant-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .api-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 42px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+      font-size: 0.88rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .api-status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red);
+    }
+
+    .api-status.online::before {
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+    }
+
+    .log {
+      height: 340px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      background: #05090e;
+      color: #8dffc5;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+
+    .log .muted {
+      color: #6d7f8f;
+    }
+
+    .log .warn {
+      color: #ffd166;
+    }
+
+    .log .bad {
+      color: #ff8585;
+    }
+
+    .log .good {
+      color: #8dffc5;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .mini-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .mini-panel h3 {
+      margin: 0 0 10px;
+      font-size: 1.06rem;
+    }
+
+    .mini-panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.62;
+      font-size: 0.96rem;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .summary {
+      min-height: 92px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .summary small {
+      display: block;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .summary strong {
+      display: block;
+      margin-top: 10px;
+      font-family: var(--mono);
+      font-size: 1.22rem;
+    }
+
+    @media (max-width: 1180px) {
+      .app,
+      .overview-grid,
+      .guide-shell,
+      .guide-body,
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .control-panel {
+        position: static;
+      }
+
+      .topbar-inner {
+        grid-template-columns: 1fr;
+      }
+
+      .top-actions {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .topbar-inner,
+      .app {
+        width: min(100% - 20px, 1680px);
+      }
+
+      .topbar-inner {
+        padding: 24px 0;
+      }
+
+      .app {
+        padding-top: 12px;
+      }
+
+      .button-row,
+      .input-row,
+      .plain-explainer,
+      .two-col,
+      .summary-grid,
+      .assistant-toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .overview-grid {
+        padding: 20px;
+      }
+
+      .guide-shell {
+        padding: 20px;
+      }
+
+      .guide-hero,
+      .guide-body,
+      .guide-actions {
+        padding: 20px;
+      }
+
+      .guide-hero,
+      .guide-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .concept-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bet-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .prob-row {
+        grid-template-columns: 86px minmax(0, 1fr) 64px;
+      }
+
+      .prob-interval {
+        display: none;
+      }
+
+      .chart {
+        height: 260px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="networkCanvas" aria-hidden="true"></canvas>
+
+  <div class="page">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <p class="eyebrow">Processos Estocásticos e Simulações</p>
+          <h1>Roleta de Markov</h1>
+          <p class="subtitle">Um cassino didático em que cada rodada é uma transição de uma Cadeia de Markov em tempo discreto: a linha ativa da matriz define as fatias da roleta, a simulação estima frequências e a teoria calcula o comportamento de longo prazo.</p>
+        </div>
+        <div class="top-actions" aria-label="Resumo técnico">
+          <span class="tag">Tema 7: Markov discreto</span>
+          <span class="tag">Monte Carlo</span>
+          <span class="tag">HTML + CSS + JS</span>
+          <span class="tag">API Python opcional</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="app">
+      <section class="panel overview-panel">
+        <div class="overview-grid">
+          <div class="overview-copy">
+            <p class="eyebrow">Ideia central do trabalho</p>
+            <h2>Uma roleta comum sorteia. Esta roleta evolui.</h2>
+            <p>Em uma roleta tradicional, cada rodada parece isolada. Neste projeto, a cor atual representa o estado do sistema e altera as probabilidades da próxima rodada. Por isso o site mostra uma Cadeia de Markov de forma visual: a matriz escolhe as fatias, a roleta executa a transição e os gráficos comparam simulação com teoria.</p>
+            <div class="big-equation">
+              <span>X<sub>t</sub> = estado atual</span><br>
+              <span>P(X<sub>t+1</sub> = j | X<sub>t</sub> = i) = P<sub>ij</sub></span><br>
+              <span>π = πP representa a distribuição de longo prazo</span>
+            </div>
+          </div>
+
+          <div class="concept-grid" aria-label="Fluxo visual da cadeia de Markov">
+            <div class="concept-card">
+              <strong>1. Observar X<sub>t</sub></strong>
+              <p>A cor atual diz qual linha da matriz será usada. O histórico anterior deixa de importar para a próxima decisão.</p>
+            </div>
+            <div class="concept-card">
+              <strong>2. Ler a linha de P</strong>
+              <p>Cada número da linha vira uma fatia da roleta. Linhas diferentes criam roletas diferentes.</p>
+            </div>
+            <div class="concept-card">
+              <strong>3. Sortear U</strong>
+              <p>Um valor uniforme em [0,1] cai em um intervalo acumulado e escolhe a próxima cor.</p>
+            </div>
+            <div class="concept-card">
+              <strong>4. Atualizar X<sub>t+1</sub></strong>
+              <p>A nova cor vira o estado atual da rodada seguinte. Repetir isso muitas vezes revela o longo prazo.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel guide-panel" aria-label="Roteiro guiado da apresentação">
+        <div class="guide-shell">
+          <div class="guide-sidebar">
+            <p class="eyebrow">Roteiro guiado</p>
+            <h2>Apresente a cadeia em 7 passos</h2>
+            <p>Clique em começar e avance como se fosse uma mini aula. Cada passo explica uma parte da Cadeia de Markov em tempo discreto e aponta onde isso aparece na roleta.</p>
+            <div id="guideProgress" class="guide-progress" aria-label="Progresso dos passos"></div>
+          </div>
+
+          <div class="guide-stage">
+            <div id="guideContent" class="guide-empty">
+              <div>
+                <h3>Comece pelo conceito, depois mostre a simulação.</h3>
+                <p>Este roteiro foi pensado para apresentação oral: primeiro define os estados, depois apresenta a matriz, mostra o sorteio por número aleatório, conecta com Monte Carlo e finaliza com distribuição estacionária.</p>
+              </div>
+            </div>
+            <div class="guide-actions">
+              <button id="guideStartBtn" class="btn btn-primary" type="button">Começar</button>
+              <span id="guideStatus" class="guide-status">Roteiro ainda não iniciado</span>
+              <button id="guidePrevBtn" class="btn" type="button">Anterior</button>
+              <button id="guideNextBtn" class="btn" type="button">Seguinte</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel control-panel" aria-label="Simulador da roleta">
+        <div class="panel-header">
+          <h2 class="panel-title">Roleta dependente do estado</h2>
+          <p class="panel-kicker">As fatias mudam conforme o estado atual. Isso diferencia uma roleta comum de uma cadeia de Markov: o próximo resultado depende da linha ativa da matriz.</p>
+        </div>
+
+        <div class="wheel-zone">
+          <div class="state-strip">
+            <span id="stateDot" class="state-dot"></span>
+            <div id="currentState" class="state-main">Verde <span>Estável</span></div>
+            <div id="stepCounter" class="state-step">t = 0</div>
+          </div>
+
+          <div class="wheel-stage">
+            <div class="wheel-shadow"></div>
+            <div class="pointer" aria-hidden="true"></div>
+            <div class="wheel-ring">
+              <div id="wheel" class="wheel"></div>
+              <div class="hub">P(X<sub>t+1</sub>)</div>
+            </div>
+          </div>
+
+          <p class="roulette-caption">O ponteiro mostra o próximo estado. A barra abaixo mostra os intervalos acumulados usados para transformar o número aleatório U em uma cor.</p>
+
+          <div id="uGauge" class="u-gauge" aria-label="Intervalos acumulados da amostragem">
+            <span id="uMarker" class="u-marker"></span>
+          </div>
+
+          <div class="button-row">
+            <button id="spinBtn" class="btn btn-primary" type="button">Simular 1 passo</button>
+            <button id="batchBtn" class="btn" type="button">Monte Carlo 250</button>
+          </div>
+          <div class="button-row">
+            <button id="explainBtn" class="btn" type="button">Analisar rodada</button>
+            <button id="resetBtn" class="btn btn-danger" type="button">Reiniciar</button>
+          </div>
+        </div>
+
+        <div class="bet-box">
+          <div class="input-row">
+            <div class="field">
+              <label for="stakeInput">Aposta didática</label>
+              <input id="stakeInput" type="number" min="1" max="500" step="5" value="25">
+            </div>
+            <div class="field">
+              <label for="bankInput">Saldo</label>
+              <input id="bankInput" type="number" min="0" step="10" value="1200">
+            </div>
+          </div>
+
+          <div id="betGrid" class="bet-grid" aria-label="Escolha da cor apostada"></div>
+
+          <div class="metrics" aria-label="Indicadores da aposta">
+            <div class="metric">
+              <small>Prob. condicional</small>
+              <strong id="selectedProb">62.0%</strong>
+            </div>
+            <div class="metric">
+              <small>Odd fixa</small>
+              <strong id="selectedOdd">2.14x</strong>
+            </div>
+            <div class="metric">
+              <small>Valor esperado</small>
+              <strong id="selectedEv" class="positive">+R$ 8.15</strong>
+            </div>
+            <div class="metric">
+              <small>Melhor aposta</small>
+              <strong id="bestBet">Verde</strong>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="main-grid">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2 class="panel-title">1. Narrativa matemática</h2>
+              <p class="panel-kicker">O tema escolhido é Cadeia de Markov em tempo discreto. A roleta não sorteia sempre com as mesmas probabilidades: ela usa a linha da matriz correspondente ao estado atual.</p>
+            </div>
+            <div class="content">
+              <div class="formula">
+                <span>Espaço de estados: S = {Verde, Amarelo, Vermelho, Roxo, Laranja}</span>
+                <span>Propriedade de Markov: P(X<sub>n+1</sub> = j | X<sub>n</sub> = i, histórico) = P<sub>ij</sub></span>
+                <span>Distribuição estacionária: π = πP, com Σπ<sub>i</sub> = 1</span>
+              </div>
+
+              <div class="plain-explainer">
+                <div>
+                  <strong>Em português</strong>
+                  <p>A cadeia não tenta lembrar todas as rodadas. Ela só pergunta: qual é a cor agora?</p>
+                </div>
+                <div>
+                  <strong>Na roleta</strong>
+                  <p>A cor atual muda o tamanho das fatias. Verde favorece estabilidade; Vermelho aumenta o risco.</p>
+                </div>
+                <div>
+                  <strong>No gráfico</strong>
+                  <p>Com muitas rodadas, as frequências simuladas tendem a se aproximar da distribuição estacionária.</p>
+                </div>
+              </div>
+
+              <ol id="stepList" class="step-list">
+                <li class="step-item active">
+                  <span class="step-number">1</span>
+                  <div>
+                    <strong>Estado atual</strong>
+                    <p>O sistema começa em Verde. Em cada rodada observamos X<sub>t</sub>, que seleciona uma linha da matriz P.</p>
+                  </div>
+                </li>
+                <li class="step-item">
+                  <span class="step-number">2</span>
+                  <div>
+                    <strong>Linha ativa da matriz</strong>
+                    <p>Se X<sub>t</sub> = Verde, usamos a primeira linha. Se X<sub>t</sub> = Vermelho, usamos a terceira linha, e assim por diante.</p>
+                  </div>
+                </li>
+                <li class="step-item">
+                  <span class="step-number">3</span>
+                  <div>
+                    <strong>Amostragem por intervalo acumulado</strong>
+                    <p>Um número U entre 0 e 1 cai em um intervalo acumulado. Esse intervalo determina o próximo estado.</p>
+                  </div>
+                </li>
+                <li class="step-item">
+                  <span class="step-number">4</span>
+                  <div>
+                    <strong>Transição</strong>
+                    <p>A roleta para na cor sorteada, atualiza X<sub>t+1</sub> e registra a probabilidade P<sub>ij</sub> usada.</p>
+                  </div>
+                </li>
+                <li class="step-item">
+                  <span class="step-number">5</span>
+                  <div>
+                    <strong>Longo prazo</strong>
+                    <p>Repetindo muitas rodadas, as frequências simuladas se aproximam da distribuição estacionária π.</p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2 class="panel-title">2. Matriz de transição P</h2>
+              <p class="panel-kicker">Cada linha soma 1. A linha iluminada é a distribuição que alimenta a roleta neste instante.</p>
+            </div>
+            <div class="content">
+              <div id="matrix" class="matrix" aria-label="Matriz de transição"></div>
+              <div id="probList" class="prob-list"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2 class="panel-title">3. Previsão de n passos</h2>
+              <p class="panel-kicker">A partir do estado atual, o vetor de probabilidades evolui por v<sub>n+1</sub> = v<sub>n</sub>P. As curvas mostram como a incerteza se espalha e converge.</p>
+            </div>
+            <div class="content">
+              <canvas id="forecastChart" class="chart" aria-label="Gráfico de previsão de probabilidades"></canvas>
+              <div id="forecastLegend" class="chart-legend"></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2 class="panel-title">4. Aposta, risco e valor esperado</h2>
+              <p class="panel-kicker">As odds são calculadas pela distribuição estacionária, mas o jogador observa a probabilidade condicional da próxima rodada. Essa diferença cria decisões com EV positivo ou negativo.</p>
+            </div>
+            <div class="content">
+              <div class="summary-grid">
+                <div class="summary">
+                  <small>Rodadas</small>
+                  <strong id="summarySpins">0</strong>
+                </div>
+                <div class="summary">
+                  <small>Saldo atual</small>
+                  <strong id="summaryBank">R$ 1200</strong>
+                </div>
+                <div class="summary">
+                  <small>π selecionado</small>
+                  <strong id="summaryPi">44.8%</strong>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="mini-panel">
+                  <h3>Valor esperado da aposta</h3>
+                  <p>EV = aposta × [P(X<sub>t+1</sub> = cor | X<sub>t</sub>) × odd − 1]. Quando EV &gt; 0, a probabilidade condicional está melhor do que a odd de longo prazo sugere.</p>
+                </div>
+                <div class="mini-panel">
+                  <h3>Por que isso é Markov?</h3>
+                  <p>A roleta comum é independente. Aqui, a chance da próxima cor depende somente da cor atual, não de todo o histórico. Essa é exatamente a propriedade de Markov.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2 class="panel-title">5. Simulação versus teoria</h2>
+              <p class="panel-kicker">O gráfico compara a frequência observada nas rodadas com a distribuição estacionária π calculada por iteração de potência.</p>
+            </div>
+            <div class="content">
+              <canvas id="empiricalChart" class="chart short" aria-label="Gráfico de frequências empíricas"></canvas>
+              <div class="chart-legend">
+                <span class="legend-item"><span class="legend-line" style="--legend:#eef5fb"></span>Frequência simulada</span>
+                <span class="legend-item"><span class="legend-line" style="--legend:#7dd3fc"></span>Distribuição estacionária π</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2 class="panel-title">6. Terminal da simulação</h2>
+              <p class="panel-kicker">Registro técnico das transições, do U sorteado e do ganho ou perda em créditos didáticos.</p>
+            </div>
+            <div class="content">
+              <div id="log" class="log" aria-live="polite"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2 class="panel-title">7. Assistente explicador</h2>
+              <p class="panel-kicker">O botão tenta consultar uma API Python local. Se ela não estiver aberta, o próprio JavaScript gera a explicação.</p>
+            </div>
+            <div class="assistant">
+              <div class="assistant-toolbar">
+                <span id="apiStatus" class="api-status">IA local ativa</span>
+                <button id="assistantBtn" class="btn" type="button">Gerar explicação</button>
+              </div>
+              <div id="assistantOutput" class="assistant-output">
+                <p>Selecione uma aposta, rode a roleta e peça uma análise. O texto conecta a rodada atual com a matriz, o valor esperado e a distribuição estacionária.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const STATES = [
+      {
+        name: "Verde",
+        short: "Estável",
+        color: "#26d07c",
+        meaning: "rodada de baixa volatilidade, em que o sistema tende a continuar controlado"
+      },
+      {
+        name: "Amarelo",
+        short: "Atenção",
+        color: "#f3c84b",
+        meaning: "estado intermediário, com chance relevante de voltar ao normal ou degradar"
+      },
+      {
+        name: "Vermelho",
+        short: "Perda",
+        color: "#f15b5b",
+        meaning: "regime de risco, representando uma sequência ruim ou falha operacional"
+      },
+      {
+        name: "Roxo",
+        short: "Bônus",
+        color: "#d96cff",
+        meaning: "modo especial, raro, mas com memória de curto prazo no sistema"
+      },
+      {
+        name: "Laranja",
+        short: "Recuperação",
+        color: "#ff9d42",
+        meaning: "estado de correção, em que o sistema tende a voltar para estabilidade"
+      }
+    ];
+
+    const P = [
+      [0.62, 0.18, 0.06, 0.10, 0.04],
+      [0.38, 0.27, 0.16, 0.11, 0.08],
+      [0.20, 0.26, 0.22, 0.14, 0.18],
+      [0.34, 0.14, 0.10, 0.26, 0.16],
+      [0.48, 0.18, 0.08, 0.10, 0.16]
+    ];
+
+    const GUIDE_STEPS = [
+      {
+        label: "Estados",
+        title: "Defina o que a cadeia pode observar",
+        chip: "Passo 1: espaço de estados",
+        body: [
+          "Uma Cadeia de Markov começa com um conjunto finito ou enumerável de estados. No projeto, cada cor da roleta é um estado possível do sistema.",
+          "Isso deixa o problema concreto: em vez de falar de probabilidade de forma abstrata, o site acompanha uma variável aleatória X_t que pode assumir Verde, Amarelo, Vermelho, Roxo ou Laranja."
+        ],
+        formula: "S = {Verde, Amarelo, Vermelho, Roxo, Laranja}<br>X_t ∈ S",
+        example: "Na apresentação, diga: “se a roleta está em Verde, então X_t = Verde. A próxima rodada vai sortear X_{t+1}.”"
+      },
+      {
+        label: "Memória",
+        title: "Mostre a propriedade de Markov",
+        chip: "Passo 2: memória curta",
+        body: [
+          "A parte principal do tema é a ideia de memória curta. O próximo estado depende do estado atual, não de toda a sequência de estados anteriores.",
+          "Isso não significa que o passado nunca importou. Significa que, para prever o próximo passo, todo o resumo necessário do passado já está contido em X_t."
+        ],
+        formula: "P(X_{t+1}=j | X_t=i, X_{t-1}, ..., X_0) = P(X_{t+1}=j | X_t=i)",
+        example: "No site, a roleta não consulta todo o histórico. Ela olha apenas a cor atual para decidir qual linha da matriz será usada."
+      },
+      {
+        label: "Matriz P",
+        title: "Transforme a teoria em uma matriz de transição",
+        chip: "Passo 3: matriz estocástica",
+        body: [
+          "Cada linha da matriz P representa uma distribuição de probabilidade. Por isso cada linha precisa somar 1.",
+          "O elemento P_ij informa a probabilidade de sair do estado i e ir para o estado j em exatamente uma rodada."
+        ],
+        formula: "P_ij = P(X_{t+1}=j | X_t=i)<br>Σ_j P_ij = 1",
+        example: "Se a linha Verde contém 0,62 em Verde e 0,18 em Amarelo, então partindo de Verde existe 62% de chance de continuar Verde e 18% de ir para Amarelo."
+      },
+      {
+        label: "Roleta",
+        title: "Use a linha atual para construir a roleta",
+        chip: "Passo 4: probabilidade condicional",
+        body: [
+          "Aqui aparece a diferença visual entre uma roleta comum e uma roleta Markoviana. As fatias não são fixas para sempre.",
+          "Quando o estado atual muda, a linha ativa muda, e a roleta passa a ter outro conjunto de probabilidades."
+        ],
+        formula: "Se X_t = i, então a próxima roleta usa a linha i de P.",
+        example: "A matriz iluminada no site mostra exatamente qual linha está alimentando a roleta naquele instante."
+      },
+      {
+        label: "Sorteio U",
+        title: "Amostre o próximo estado com um número uniforme",
+        chip: "Passo 5: simulação",
+        body: [
+          "Para simular uma transição, o JavaScript sorteia um número U entre 0 e 1.",
+          "Depois, ele compara U com os intervalos acumulados da linha ativa. O intervalo onde U cair define a cor final."
+        ],
+        formula: "U ~ Uniforme(0,1)<br>Escolha j quando Σ_{k<j} P_ik ≤ U < Σ_{k≤j} P_ik",
+        example: "A barra colorida abaixo da roleta mostra esses intervalos. Quando U aparece na barra, fica claro por que aquela cor foi escolhida."
+      },
+      {
+        label: "n passos",
+        title: "Compare previsão teórica e simulação Monte Carlo",
+        chip: "Passo 6: Chapman-Kolmogorov",
+        body: [
+          "Depois de uma rodada, usamos P. Depois de duas, usamos P². Depois de n rodadas, usamos P^n.",
+          "O gráfico de previsão mostra a distribuição futura calculada por v_{t+n} = v_t P^n, enquanto o Monte Carlo mostra frequências obtidas por repetição experimental."
+        ],
+        formula: "v_{t+1} = v_tP<br>v_{t+n} = v_tP^n",
+        example: "Clique em Monte Carlo 250 e mostre que as frequências variam, mas começam a se aproximar da tendência teórica."
+      },
+      {
+        label: "Longo prazo",
+        title: "Feche com distribuição estacionária e decisão",
+        chip: "Passo 7: equilíbrio",
+        body: [
+          "A distribuição estacionária π descreve a proporção esperada de tempo em cada estado quando a cadeia roda por muito tempo.",
+          "No projeto, ela também serve para comparar o comportamento de longo prazo com a probabilidade condicional da próxima rodada, criando a análise de valor esperado da aposta."
+        ],
+        formula: "π = πP<br>Σ_i π_i = 1<br>EV = aposta × [P(cor | estado atual) × odd − 1]",
+        example: "Esse fechamento impressiona porque conecta teoria, simulação e decisão: não é só uma roleta bonita, é uma aplicação completa de Cadeia de Markov."
+      }
+    ];
+
+    const dom = {};
+    let currentState = 0;
+    let selectedBet = 0;
+    let spinCount = 0;
+    let bank = 1200;
+    let stake = 25;
+    let rotation = 0;
+    let isSpinning = false;
+    let lastU = null;
+    let lastTransition = null;
+    let counts = Array(STATES.length).fill(0);
+    let activeStep = 0;
+    let guideIndex = -1;
+
+    const stationary = computeStationary(P);
+    const odds = stationary.map((prob) => clamp(0.96 / prob, 1.12, 12));
+
+    document.addEventListener("DOMContentLoaded", () => {
+      bindDom();
+      bindEvents();
+      renderAll();
+      startNetworkCanvas();
+      appendLog("[INIT] Cadeia de Markov em tempo discreto carregada.", "good");
+      appendLog("[MODEL] Estado inicial X_0 = Verde. Matriz P validada: cada linha soma 1.", "muted");
+    });
+
+    window.addEventListener("resize", () => {
+      drawForecastChart();
+      drawEmpiricalChart();
+    });
+
+    function bindDom() {
+      dom.wheel = document.getElementById("wheel");
+      dom.stateDot = document.getElementById("stateDot");
+      dom.currentState = document.getElementById("currentState");
+      dom.stepCounter = document.getElementById("stepCounter");
+      dom.uGauge = document.getElementById("uGauge");
+      dom.uMarker = document.getElementById("uMarker");
+      dom.spinBtn = document.getElementById("spinBtn");
+      dom.batchBtn = document.getElementById("batchBtn");
+      dom.explainBtn = document.getElementById("explainBtn");
+      dom.resetBtn = document.getElementById("resetBtn");
+      dom.stakeInput = document.getElementById("stakeInput");
+      dom.bankInput = document.getElementById("bankInput");
+      dom.betGrid = document.getElementById("betGrid");
+      dom.selectedProb = document.getElementById("selectedProb");
+      dom.selectedOdd = document.getElementById("selectedOdd");
+      dom.selectedEv = document.getElementById("selectedEv");
+      dom.bestBet = document.getElementById("bestBet");
+      dom.summarySpins = document.getElementById("summarySpins");
+      dom.summaryBank = document.getElementById("summaryBank");
+      dom.summaryPi = document.getElementById("summaryPi");
+      dom.matrix = document.getElementById("matrix");
+      dom.probList = document.getElementById("probList");
+      dom.forecastChart = document.getElementById("forecastChart");
+      dom.forecastLegend = document.getElementById("forecastLegend");
+      dom.empiricalChart = document.getElementById("empiricalChart");
+      dom.log = document.getElementById("log");
+      dom.stepList = document.getElementById("stepList");
+      dom.guideProgress = document.getElementById("guideProgress");
+      dom.guideContent = document.getElementById("guideContent");
+      dom.guideStartBtn = document.getElementById("guideStartBtn");
+      dom.guidePrevBtn = document.getElementById("guidePrevBtn");
+      dom.guideNextBtn = document.getElementById("guideNextBtn");
+      dom.guideStatus = document.getElementById("guideStatus");
+      dom.apiStatus = document.getElementById("apiStatus");
+      dom.assistantBtn = document.getElementById("assistantBtn");
+      dom.assistantOutput = document.getElementById("assistantOutput");
+    }
+
+    function bindEvents() {
+      dom.spinBtn.addEventListener("click", spinAnimated);
+      dom.batchBtn.addEventListener("click", () => runMonteCarlo(250));
+      dom.explainBtn.addEventListener("click", requestAssistant);
+      dom.assistantBtn.addEventListener("click", requestAssistant);
+      dom.resetBtn.addEventListener("click", resetLab);
+      dom.guideStartBtn.addEventListener("click", startGuide);
+      dom.guidePrevBtn.addEventListener("click", previousGuideStep);
+      dom.guideNextBtn.addEventListener("click", nextGuideStep);
+      dom.stakeInput.addEventListener("input", () => {
+        stake = normalizeMoney(dom.stakeInput.value, 25);
+        renderBetMetrics();
+      });
+      dom.bankInput.addEventListener("input", () => {
+        bank = normalizeMoney(dom.bankInput.value, 1200);
+        renderBetMetrics();
+      });
+    }
+
+    function renderAll() {
+      renderState();
+      renderWheel();
+      renderGauge();
+      renderBetGrid();
+      renderBetMetrics();
+      renderMatrix();
+      renderProbList();
+      renderForecastLegend();
+      renderSteps();
+      renderGuide();
+      drawForecastChart();
+      drawEmpiricalChart();
+    }
+
+    function renderState() {
+      const state = STATES[currentState];
+      document.documentElement.style.setProperty("--state-color", state.color);
+      dom.stateDot.style.setProperty("--state-color", state.color);
+      dom.currentState.innerHTML = `${state.name} <span>${state.short}</span>`;
+      dom.stepCounter.textContent = `t = ${spinCount}`;
+    }
+
+    function renderWheel() {
+      const segments = buildSegments(P[currentState]);
+      const gradient = segments
+        .map((seg) => `${seg.color} ${seg.start.toFixed(3)}deg ${seg.end.toFixed(3)}deg`)
+        .join(", ");
+      dom.wheel.style.background = `conic-gradient(from 0deg, ${gradient})`;
+    }
+
+    function renderGauge() {
+      let html = "";
+      P[currentState].forEach((prob, index) => {
+        html += `<span class="u-segment" style="width:${(prob * 100).toFixed(3)}%;background:${STATES[index].color}" title="${STATES[index].name}: ${formatPct(prob)}"></span>`;
+      });
+      html += `<span id="uMarker" class="u-marker"></span>`;
+      dom.uGauge.innerHTML = html;
+      dom.uMarker = document.getElementById("uMarker");
+      if (lastU === null) {
+        dom.uMarker.style.display = "none";
+      } else {
+        dom.uMarker.style.display = "block";
+        dom.uMarker.style.left = `${lastU * 100}%`;
+        dom.uMarker.dataset.u = `U=${lastU.toFixed(3)}`;
+      }
+    }
+
+    function renderBetGrid() {
+      dom.betGrid.innerHTML = STATES.map((state, index) => {
+        const active = index === selectedBet ? "active" : "";
+        return `
+          <button class="bet-chip ${active}" type="button" data-index="${index}" style="--chip-color:${state.color}" aria-pressed="${index === selectedBet}">
+            <span></span>
+            ${state.name}
+          </button>
+        `;
+      }).join("");
+
+      dom.betGrid.querySelectorAll(".bet-chip").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedBet = Number(button.dataset.index);
+          renderBetGrid();
+          renderBetMetrics();
+          renderMatrix();
+          drawEmpiricalChart();
+        });
+      });
+    }
+
+    function renderBetMetrics() {
+      const row = P[currentState];
+      const prob = row[selectedBet];
+      const odd = odds[selectedBet];
+      const ev = stake * (prob * odd - 1);
+      const evs = expectedValues(row);
+      const bestIndex = argMax(evs);
+
+      dom.selectedProb.textContent = formatPct(prob);
+      dom.selectedOdd.textContent = `${odd.toFixed(2)}x`;
+      dom.selectedEv.textContent = `${ev >= 0 ? "+" : "-"}R$ ${Math.abs(ev).toFixed(2)}`;
+      dom.selectedEv.className = ev >= 0 ? "positive" : "negative";
+      dom.bestBet.textContent = STATES[bestIndex].name;
+      dom.bestBet.style.color = STATES[bestIndex].color;
+      dom.summarySpins.textContent = String(spinCount);
+      dom.summaryBank.textContent = formatMoney(bank);
+      dom.summaryPi.textContent = formatPct(stationary[selectedBet]);
+      dom.bankInput.value = Math.round(bank);
+      dom.stakeInput.value = Math.round(stake);
+    }
+
+    function renderMatrix() {
+      let html = `<div class="matrix-label"></div>`;
+      html += STATES.map((state) => `<div class="matrix-label" style="color:${state.color}">${state.name}</div>`).join("");
+
+      P.forEach((row, rowIndex) => {
+        html += `<div class="matrix-label" style="color:${STATES[rowIndex].color}">${STATES[rowIndex].name}</div>`;
+        row.forEach((prob, columnIndex) => {
+          const active = rowIndex === currentState ? "active-row" : "";
+          const selected = columnIndex === selectedBet ? "selected-column" : "";
+          const heat = 0.07 + prob * 0.72;
+          html += `
+            <div class="matrix-cell ${active} ${selected}" style="--heat:${heat.toFixed(3)};--selected-color:${STATES[columnIndex].color}" title="P(${STATES[rowIndex].name} → ${STATES[columnIndex].name}) = ${prob.toFixed(2)}">
+              ${prob.toFixed(2)}
+            </div>
+          `;
+        });
+      });
+
+      dom.matrix.innerHTML = html;
+    }
+
+    function renderProbList() {
+      let cumulative = 0;
+      dom.probList.innerHTML = P[currentState].map((prob, index) => {
+        const start = cumulative;
+        cumulative += prob;
+        return `
+          <div class="prob-row">
+            <div class="prob-name"><span class="mini-dot" style="--dot:${STATES[index].color}"></span>${STATES[index].name}</div>
+            <div class="bar-track"><div class="bar-fill" style="--w:${(prob * 100).toFixed(1)}%;--fill:${STATES[index].color}"></div></div>
+            <div class="prob-value">${formatPct(prob)}</div>
+            <div class="prob-interval">[${start.toFixed(2)}, ${cumulative.toFixed(2)})</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderForecastLegend() {
+      dom.forecastLegend.innerHTML = STATES.map((state) => `
+        <span class="legend-item"><span class="legend-line" style="--legend:${state.color}"></span>${state.name}</span>
+      `).join("");
+    }
+
+    function renderSteps() {
+      const items = Array.from(dom.stepList.querySelectorAll(".step-item"));
+      items.forEach((item, index) => item.classList.toggle("active", index === activeStep));
+    }
+
+    function renderGuide() {
+      dom.guideProgress.innerHTML = GUIDE_STEPS.map((step, index) => {
+        const active = index === guideIndex ? "active" : "";
+        const done = guideIndex >= 0 && index < guideIndex ? "done" : "";
+        return `
+          <button class="guide-dot ${active} ${done}" type="button" data-guide-index="${index}" aria-current="${active ? "step" : "false"}">
+            <span>${index + 1}</span>
+            ${step.label}
+          </button>
+        `;
+      }).join("");
+
+      dom.guideProgress.querySelectorAll(".guide-dot").forEach((button) => {
+        button.addEventListener("click", () => {
+          guideIndex = Number(button.dataset.guideIndex);
+          renderGuide();
+        });
+      });
+
+      if (guideIndex < 0) {
+        dom.guideContent.className = "guide-empty";
+        dom.guideContent.innerHTML = `
+          <div>
+            <h3>Comece pelo conceito, depois mostre a simulação.</h3>
+            <p>Este roteiro foi pensado para apresentação oral: primeiro define os estados, depois apresenta a matriz, mostra o sorteio por número aleatório, conecta com Monte Carlo e finaliza com distribuição estacionária.</p>
+          </div>
+        `;
+        dom.guideStatus.textContent = "Roteiro ainda não iniciado";
+        dom.guideStartBtn.textContent = "Começar";
+        dom.guidePrevBtn.disabled = true;
+        dom.guideNextBtn.disabled = true;
+        dom.guideNextBtn.textContent = "Seguinte";
+        return;
+      }
+
+      const step = GUIDE_STEPS[guideIndex];
+      dom.guideContent.className = "";
+      dom.guideContent.innerHTML = `
+        <div class="guide-hero">
+          <div>
+            <div class="guide-index">Passo ${guideIndex + 1} de ${GUIDE_STEPS.length}</div>
+            <h3 class="guide-title">${step.title}</h3>
+          </div>
+          <span class="guide-chip">${step.chip}</span>
+        </div>
+        <div class="guide-body">
+          <div class="guide-text">
+            ${step.body.map((paragraph) => `<p>${paragraph}</p>`).join("")}
+            <div class="guide-example"><strong>Como falar na apresentação:</strong> ${step.example}</div>
+          </div>
+          <div class="guide-formula">${step.formula}</div>
+        </div>
+      `;
+
+      dom.guideStatus.textContent = `Passo ${guideIndex + 1} de ${GUIDE_STEPS.length}`;
+      dom.guideStartBtn.textContent = "Recomeçar";
+      dom.guidePrevBtn.disabled = guideIndex === 0;
+      dom.guideNextBtn.disabled = guideIndex === GUIDE_STEPS.length - 1;
+      dom.guideNextBtn.textContent = guideIndex === GUIDE_STEPS.length - 1 ? "Fim do roteiro" : "Seguinte";
+    }
+
+    function startGuide() {
+      guideIndex = 0;
+      renderGuide();
+      appendLog("[GUIA] Roteiro de apresentação iniciado no passo 1: espaço de estados.", "muted");
+    }
+
+    function previousGuideStep() {
+      if (guideIndex <= 0) return;
+      guideIndex -= 1;
+      renderGuide();
+    }
+
+    function nextGuideStep() {
+      if (guideIndex < 0) {
+        startGuide();
+        return;
+      }
+
+      if (guideIndex >= GUIDE_STEPS.length - 1) return;
+      guideIndex += 1;
+      renderGuide();
+    }
+
+    function spinAnimated() {
+      if (isSpinning) return;
+
+      const from = currentState;
+      const row = P[from];
+      const u = Math.random();
+      const to = sampleIndex(row, u);
+      const segments = buildSegments(row);
+      const center = (segments[to].start + segments[to].end) / 2;
+      const target = normalizeDegrees(360 - center);
+      const currentMod = normalizeDegrees(rotation);
+      let delta = target - currentMod;
+      if (delta <= 0) delta += 360;
+      const totalDelta = delta + 360 * (4 + Math.floor(Math.random() * 3));
+      const startRotation = rotation;
+      const nextRotation = startRotation + totalDelta;
+      const duration = 3200;
+      const started = performance.now();
+
+      isSpinning = true;
+      activeStep = 2;
+      setButtonsDisabled(true);
+      lastU = u;
+      lastTransition = { from, to, prob: row[to], u };
+      renderGauge();
+      renderSteps();
+      appendLog(`[t=${spinCount}] U=${u.toFixed(4)} usando linha ${STATES[from].name}: próximo estado candidato ${STATES[to].name}.`, "warn");
+
+      function animate(now) {
+        const progress = Math.min((now - started) / duration, 1);
+        const eased = easeOutQuart(progress);
+        rotation = startRotation + totalDelta * eased;
+        dom.wheel.style.transform = `rotate(${rotation}deg)`;
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          rotation = nextRotation;
+          dom.wheel.style.transform = `rotate(${rotation}deg)`;
+          finalizeTransition(from, to, u, true);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function finalizeTransition(from, to, u, applyBet) {
+      const prob = P[from][to];
+      const oldBank = bank;
+
+      if (applyBet) {
+        if (to === selectedBet) {
+          bank += stake * (odds[selectedBet] - 1);
+        } else {
+          bank -= stake;
+        }
+        bank = Math.max(0, bank);
+      }
+
+      currentState = to;
+      spinCount += 1;
+      counts[to] += 1;
+      activeStep = 3;
+
+      const resultClass = to === selectedBet ? "good" : "bad";
+      const delta = bank - oldBank;
+      const result = applyBet
+        ? `${delta >= 0 ? "+" : "-"}R$ ${Math.abs(delta).toFixed(2)}`
+        : "sem aposta";
+
+      appendLog(`[t=${spinCount}] ${STATES[from].name} → ${STATES[to].name}; P_ij=${prob.toFixed(2)}; resultado da aposta: ${result}.`, resultClass);
+
+      isSpinning = false;
+      setButtonsDisabled(false);
+      renderAll();
+
+      window.setTimeout(() => {
+        activeStep = 4;
+        renderSteps();
+      }, 450);
+    }
+
+    function runMonteCarlo(steps) {
+      if (isSpinning) return;
+
+      let from = currentState;
+      const start = from;
+      const localCounts = Array(STATES.length).fill(0);
+
+      for (let i = 0; i < steps; i += 1) {
+        const u = Math.random();
+        const to = sampleIndex(P[from], u);
+        from = to;
+        currentState = to;
+        counts[to] += 1;
+        localCounts[to] += 1;
+        spinCount += 1;
+        lastU = u;
+        lastTransition = { from: start, to, prob: P[start][to] ?? 0, u };
+      }
+
+      const topIndex = argMax(localCounts);
+      activeStep = 4;
+      appendLog(`[MONTE CARLO] ${steps} transições rápidas a partir de ${STATES[start].name}. Maior frequência do lote: ${STATES[topIndex].name} (${localCounts[topIndex]} ocorrências).`, "muted");
+      renderAll();
+      settleWheelToCurrentState();
+    }
+
+    function settleWheelToCurrentState() {
+      const segments = buildSegments(P[currentState]);
+      const largest = argMax(P[currentState]);
+      const center = (segments[largest].start + segments[largest].end) / 2;
+      rotation = rotation + normalizeDegrees(360 - center - normalizeDegrees(rotation));
+      dom.wheel.style.transform = `rotate(${rotation}deg)`;
+    }
+
+    async function requestAssistant() {
+      const payload = buildAssistantPayload();
+      dom.assistantOutput.innerHTML = "<p>Analisando a linha ativa da matriz, a aposta selecionada e as frequências simuladas...</p>";
+      dom.apiStatus.textContent = "tentando API Python";
+      dom.apiStatus.classList.remove("online");
+
+      try {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 650);
+        const response = await fetch("http://localhost:8787/api/explain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        window.clearTimeout(timeout);
+
+        if (!response.ok) throw new Error("API offline");
+        const data = await response.json();
+        dom.apiStatus.textContent = "API Python conectada";
+        dom.apiStatus.classList.add("online");
+        dom.assistantOutput.innerHTML = data.html || `<p>${escapeHtml(data.answer || "")}</p>`;
+      } catch (error) {
+        dom.apiStatus.textContent = "IA local ativa";
+        dom.apiStatus.classList.remove("online");
+        dom.assistantOutput.innerHTML = localAssistantHtml(payload);
+      }
+    }
+
+    function buildAssistantPayload() {
+      const row = P[currentState];
+      const evs = expectedValues(row);
+      const best = argMax(evs);
+      const empirical = counts.map((count) => spinCount ? count / spinCount : 0);
+      return {
+        currentState: STATES[currentState].name,
+        selectedBet: STATES[selectedBet].name,
+        selectedProbability: row[selectedBet],
+        selectedOdd: odds[selectedBet],
+        selectedEv: evs[selectedBet],
+        bestBet: STATES[best].name,
+        bestEv: evs[best],
+        stationary,
+        empirical,
+        spinCount,
+        stake,
+        lastTransition
+      };
+    }
+
+    function localAssistantHtml(payload) {
+      const current = STATES[currentState];
+      const selected = STATES[selectedBet];
+      const bestIndex = STATES.findIndex((state) => state.name === payload.bestBet);
+      const convergenceText = spinCount < 40
+        ? "Como ainda há poucas rodadas, a frequência empírica pode estar distante de π. Isso é esperado em simulação Monte Carlo."
+        : "Com mais rodadas, a frequência empírica começa a se aproximar de π, mostrando a diferença entre ruído amostral e tendência de longo prazo.";
+
+      return `
+        <p><strong>Leitura do estado:</strong> agora X<sub>t</sub> = ${current.name}. Isso significa que a roleta usa a linha ${currentState + 1} da matriz P, onde ${current.meaning}.</p>
+        <p><strong>Aposta selecionada:</strong> ${selected.name} tem probabilidade condicional ${formatPct(payload.selectedProbability)} e odd fixa ${payload.selectedOdd.toFixed(2)}x. Para uma aposta de ${formatMoney(stake)}, o EV é <strong style="color:${payload.selectedEv >= 0 ? "var(--green)" : "var(--red)"}">${payload.selectedEv >= 0 ? "+" : "-"}R$ ${Math.abs(payload.selectedEv).toFixed(2)}</strong>.</p>
+        <p><strong>Sugestão do modelo:</strong> a melhor decisão neste estado é ${payload.bestBet}, com EV de ${payload.bestEv >= 0 ? "+" : "-"}R$ ${Math.abs(payload.bestEv).toFixed(2)}. Essa escolha não vem do histórico inteiro, apenas de X<sub>t</sub>, reforçando a propriedade de Markov.</p>
+        <p><strong>Simulação:</strong> ${convergenceText}</p>
+      `;
+    }
+
+    function resetLab() {
+      currentState = 0;
+      selectedBet = 0;
+      spinCount = 0;
+      bank = 1200;
+      stake = 25;
+      rotation = 0;
+      lastU = null;
+      lastTransition = null;
+      counts = Array(STATES.length).fill(0);
+      activeStep = 0;
+      dom.wheel.style.transform = "rotate(0deg)";
+      dom.log.innerHTML = "";
+      dom.assistantOutput.innerHTML = "<p>Laboratório reiniciado. Rode a roleta para gerar uma nova explicação matemática.</p>";
+      appendLog("[RESET] Estado reiniciado para Verde. Banca didática restaurada para R$ 1200.", "muted");
+      renderAll();
+    }
+
+    function setButtonsDisabled(disabled) {
+      [dom.spinBtn, dom.batchBtn, dom.explainBtn, dom.resetBtn, dom.assistantBtn].forEach((button) => {
+        button.disabled = disabled;
+      });
+      dom.spinBtn.textContent = disabled ? "Amostrando..." : "Simular 1 passo";
+    }
+
+    function appendLog(message, type = "") {
+      const time = new Date().toLocaleTimeString("pt-BR", { hour12: false });
+      const line = document.createElement("div");
+      line.className = type;
+      line.innerHTML = `<span class="muted">[${time}]</span> ${message}`;
+      dom.log.appendChild(line);
+      dom.log.scrollTop = dom.log.scrollHeight;
+    }
+
+    function expectedValues(row) {
+      return row.map((prob, index) => stake * (prob * odds[index] - 1));
+    }
+
+    function buildSegments(row) {
+      let start = 0;
+      return row.map((prob, index) => {
+        const end = start + prob * 360;
+        const segment = {
+          start,
+          end,
+          color: STATES[index].color,
+          index
+        };
+        start = end;
+        return segment;
+      });
+    }
+
+    function sampleIndex(row, u) {
+      let cumulative = 0;
+      for (let index = 0; index < row.length; index += 1) {
+        cumulative += row[index];
+        if (u <= cumulative + 1e-12) return index;
+      }
+      return row.length - 1;
+    }
+
+    function multiplyVectorMatrix(vector, matrix) {
+      const result = Array(vector.length).fill(0);
+      for (let i = 0; i < vector.length; i += 1) {
+        for (let j = 0; j < vector.length; j += 1) {
+          result[j] += vector[i] * matrix[i][j];
+        }
+      }
+      return result;
+    }
+
+    function computeStationary(matrix) {
+      let vector = Array(matrix.length).fill(1 / matrix.length);
+      for (let i = 0; i < 600; i += 1) {
+        vector = multiplyVectorMatrix(vector, matrix);
+      }
+      const sum = vector.reduce((acc, item) => acc + item, 0);
+      return vector.map((item) => item / sum);
+    }
+
+    function forecastFromCurrent(steps = 14) {
+      let vector = Array(STATES.length).fill(0);
+      vector[currentState] = 1;
+      const series = STATES.map(() => []);
+
+      for (let step = 0; step <= steps; step += 1) {
+        vector.forEach((prob, index) => series[index].push(prob));
+        vector = multiplyVectorMatrix(vector, P);
+      }
+
+      return series;
+    }
+
+    function drawForecastChart() {
+      const canvas = dom.forecastChart;
+      if (!canvas) return;
+      const ctx = prepareCanvas(canvas);
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const pad = { left: 42, right: 12, top: 18, bottom: 30 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      const series = forecastFromCurrent(14);
+
+      ctx.clearRect(0, 0, width, height);
+      drawGrid(ctx, pad, plotW, plotH, width, height);
+
+      series.forEach((values, stateIndex) => {
+        ctx.beginPath();
+        values.forEach((value, index) => {
+          const x = pad.left + (plotW * index) / (values.length - 1);
+          const y = pad.top + plotH * (1 - value);
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = STATES[stateIndex].color;
+        ctx.lineWidth = stateIndex === currentState ? 3 : 2;
+        ctx.stroke();
+
+        const last = values[values.length - 1];
+        const x = pad.left + plotW;
+        const y = pad.top + plotH * (1 - last);
+        ctx.fillStyle = STATES[stateIndex].color;
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#9fb0c2";
+      ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
+      ctx.fillText("passos futuros", pad.left + plotW - 82, height - 8);
+    }
+
+    function drawEmpiricalChart() {
+      const canvas = dom.empiricalChart;
+      if (!canvas) return;
+      const ctx = prepareCanvas(canvas);
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const pad = { left: 42, right: 12, top: 18, bottom: 42 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      const empirical = counts.map((count) => spinCount ? count / spinCount : 0);
+      const maxValue = Math.max(0.65, ...empirical, ...stationary) * 1.08;
+      const groupW = plotW / STATES.length;
+      const barW = Math.min(42, groupW * 0.42);
+
+      ctx.clearRect(0, 0, width, height);
+      drawGrid(ctx, pad, plotW, plotH, width, height, maxValue);
+
+      STATES.forEach((state, index) => {
+        const center = pad.left + groupW * index + groupW / 2;
+        const empH = plotH * (empirical[index] / maxValue);
+        const piH = plotH * (stationary[index] / maxValue);
+
+        ctx.fillStyle = state.color;
+        ctx.globalAlpha = 0.84;
+        ctx.fillRect(center - barW - 2, pad.top + plotH - empH, barW, empH);
+        ctx.globalAlpha = 1;
+
+        ctx.strokeStyle = "#7dd3fc";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(center + 2, pad.top + plotH - piH, barW, piH);
+
+        ctx.fillStyle = "#c8d5e1";
+        ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
+        ctx.textAlign = "center";
+        ctx.fillText(state.name.slice(0, 3), center, height - 18);
+      });
+
+      ctx.textAlign = "left";
+    }
+
+    function drawGrid(ctx, pad, plotW, plotH, width, height, maxValue = 1) {
+      ctx.strokeStyle = "rgba(190, 210, 230, 0.12)";
+      ctx.lineWidth = 1;
+      ctx.fillStyle = "#9fb0c2";
+      ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
+      ctx.textAlign = "right";
+
+      for (let i = 0; i <= 4; i += 1) {
+        const ratio = i / 4;
+        const y = pad.top + plotH * (1 - ratio);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(width - pad.right, y);
+        ctx.stroke();
+        ctx.fillText(`${Math.round(ratio * maxValue * 100)}%`, pad.left - 8, y + 4);
+      }
+
+      ctx.strokeStyle = "rgba(190, 210, 230, 0.28)";
+      ctx.beginPath();
+      ctx.moveTo(pad.left, pad.top);
+      ctx.lineTo(pad.left, pad.top + plotH);
+      ctx.lineTo(width - pad.right, pad.top + plotH);
+      ctx.stroke();
+      ctx.textAlign = "left";
+    }
+
+    function prepareCanvas(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width));
+      const height = Math.max(1, Math.floor(rect.height));
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return ctx;
+    }
+
+    function startNetworkCanvas() {
+      const canvas = document.getElementById("networkCanvas");
+      const ctx = canvas.getContext("2d");
+      let particles = [];
+      let lastPaint = 0;
+
+      function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(window.innerWidth * dpr);
+        canvas.height = Math.floor(window.innerHeight * dpr);
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        particles = Array.from({ length: Math.min(56, Math.max(28, Math.floor(window.innerWidth / 30))) }, () => ({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
+          vx: (Math.random() - 0.5) * 0.32,
+          vy: (Math.random() - 0.5) * 0.32,
+          r: 1 + Math.random() * 1.8
+        }));
+      }
+
+      function frame(now = 0) {
+        if (now - lastPaint < 32) {
+          requestAnimationFrame(frame);
+          return;
+        }
+        lastPaint = now;
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        ctx.fillStyle = "rgba(125, 211, 252, 0.55)";
+        const connectionDistance = window.innerWidth < 760 ? 86 : 116;
+        particles.forEach((p, i) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0 || p.x > window.innerWidth) p.vx *= -1;
+          if (p.y < 0 || p.y > window.innerHeight) p.vy *= -1;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          for (let j = i + 1; j < particles.length; j += 1) {
+            const q = particles[j];
+            const dx = p.x - q.x;
+            const dy = p.y - q.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < connectionDistance) {
+              ctx.strokeStyle = `rgba(125, 211, 252, ${0.16 * (1 - dist / connectionDistance)})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(q.x, q.y);
+              ctx.stroke();
+            }
+          }
+        });
+        requestAnimationFrame(frame);
+      }
+
+      window.addEventListener("resize", resize);
+      resize();
+      frame();
+    }
+
+    function easeOutQuart(t) {
+      return 1 - Math.pow(1 - t, 4);
+    }
+
+    function normalizeDegrees(value) {
+      return ((value % 360) + 360) % 360;
+    }
+
+    function argMax(values) {
+      return values.reduce((best, value, index, array) => value > array[best] ? index : best, 0);
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function normalizeMoney(value, fallback) {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return fallback;
+      return Math.max(0, parsed);
+    }
+
+    function formatPct(value) {
+      return `${(value * 100).toFixed(1)}%`;
+    }
+
+    function formatMoney(value) {
+      return `R$ ${Math.round(value)}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+</body>
+</html>
